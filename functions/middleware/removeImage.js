@@ -5,8 +5,14 @@ const removeImage = async (req, res) => {
   const bizId = req.body.bizId;
   const imageName = req.body.imageName;
 
-  if (!accountId || !bizId || !imageName)
-    return res.status(400).json({ error: "Bad request, missing identifier" });
+  // if (!accountId)
+  //   return res.status(400).json({ error: "Bad request, missing aid" });
+  // if (!bizId)
+  //   return res.status(400).json({ error: "Bad request, missing bod" });
+  // if (!imageName)
+  //   return res.status(400).json({ error: "Bad request, missing img" });
+  // // if (!accountId || !bizId || !imageName)
+  // //   return res.status(400).json({ error: "Bad request, missing identifier" });
 
   const doc = await db.doc(`/accounts/${accountId}`).get();
 
@@ -20,7 +26,7 @@ const removeImage = async (req, res) => {
   }
 
   bucket
-    .file(`/${imageName}`)
+    .file(`${accountId}/${imageName}`)
     .delete()
     .then(() => {
       const data = {};

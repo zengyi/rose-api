@@ -6,12 +6,7 @@ const fs = require("fs");
 const uuid = require("uuid-random");
 
 const addImage = async (req, res) => {
-  let images = [];
   let data = {};
-  let imageData = {};
-  let finished = false;
-  let counter = 0;
-  let fileCounter = 0;
   let existingImages = [];
 
   const accountId = req.params.aid;
@@ -29,72 +24,138 @@ const addImage = async (req, res) => {
     existingImages = currentData["images"] || [];
   }
 
-  try {
-    const busboy = new BusBoy({ headers: req.headers });
+  let imageFileName = {};
+  let imagesToUpload = [];
+  let imageToAdd = {};
 
-    busboy.on("file", (fieldname, file, filename, encoding, mimeType) => {
-      if (filename.length > 0) {
-        let imageExtension = filename.split(".")[
-          filename.split(".").length - 1
-        ];
-        let imageName = accountId + "-" + uuid();
-        let imageFileName = `${imageName}.${imageExtension}`;
-        let filepath = path.join(os.tmpdir(), imageFileName);
-        imageData = { filepath, mimeType };
+  const busboy = new BusBoy({ headers: req.headers });
 
-        //Just keeps track of file uploads (how many uploaded).
-        ++counter;
-        ++fileCounter;
+  //This triggers for each file type that comes in the form data
+  busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    // Getting extension of any image
+    const imageExtension = filename.split(".")[filename.split(".").length - 1];
+    // Setting filename
+    imageFileName = uuid() + "." + imageExtension;
+    // Creating path
+    const filepath = path.join(os.tmpdir(), imageFileName);
+    imageToAdd = {
+      imageFileName,
+      filepath,
+      mimetype
+    };
 
-        //storing the uploaded photo
-        fstream = fs.createWriteStream(filepath);
+    file.pipe(fs.createWriteStream(filepath));
+    //Add the image to the array
+    imagesToUpload.push(imageToAdd);
+  });
 
-        fstream.on("close", () => {
-          bucket
-            .upload(imageData.filepath, {
-              resumable: false,
-              destination: `/${imageFileName}`,
-              metadata: {
-                metadata: {
-                  contentType: imageData.mimeType
-                }
-              }
-            })
-            .then(() => {
-              images.push(imageFileName);
-              if (--counter === 0 && finished) {
-                try {
-                  data["images"] = images.concat(existingImages);
-                  data["modifiedAt"] = new Date().getTime();
-                  db.doc(`/accounts/${accountId}`).set(data, { merge: true });
-                  return res.json({
-                    message: "Image uploaded successfully",
-                    images
-                  });
-                } catch (err) {
-                  return res.json({ error: err.message });
-                }
-              }
-            });
-        });
-
-        file.pipe(fstream);
-      } else {
-        file.resume();
-      }
+  busboy.on("finish", async () => {
+    let promises = [];
+    let imageUrls = [];
+    imagesToUpload.forEach(imageToBeUploaded => {
+      imageUrls.push(imageToBeUploaded.imageFileName);
+      promises.push(
+        bucket.upload(imageToBeUploaded.filepath, {
+          destination: `${accountId}/${imageToBeUploaded.imageFileName}`,
+          resumable: false,
+          metadata: {
+            metadata: {
+              contentType: imageToBeUploaded.mimetype
+            }
+          }
+        })
+      );
     });
 
-    busboy.on("finish", () => {
-      finished = true;
-      if (fileCounter === 0) {
-        return res.status(400).json({ error: "No image file attached" });
-      }
-    });
+    try {
+      await Promise.all(promises);
 
-    busboy.end(req.rawBody);
-  } catch (error) {
-    return res.send({ error: err.message });
-  }
+      data["images"] = imageUrls.concat(existingImages);
+      data["modifiedAt"] = new Date().getTime();
+      db.doc(`/accounts/${accountId}`).set(data, { merge: true });
+
+      res
+        .status(200)
+        .json({ msg: "Successfully uploaded all images", data: imageUrls });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  busboy.end(req.rawBody);
+
+  // try {
+  //   const busboy = new BusBoy({ headers: req.headers });
+
+  //   busboy.on("file", (fieldname, file, filename, encoding, mimeType) => {
+  //     if (filename.length > 0) {
+  //       let imageExtension = filename.split(".")[
+  //         filename.split(".").length - 1
+  //       ];
+  //       let imageName = new ObjectID();
+  //       let imageFileName = `${imageName}.${imageExtension}`;
+  //       let filepath = path.join(os.tmpdir(), imageFileName);
+  //       let destination = `${accountId}/${imageFileName}`;
+
+  //       console.log("filepath", filepath);
+  //       imageData.push({ filepath, destination, mimeType });
+
+  //       //Just keeps track of file uploads (how many uploaded).
+  //       ++counter;
+  //       ++fileCounter;
+
+  //       //storing the uploaded photo
+  //       fstream = fs.createWriteStream(filepath);
+
+  //       fstream.on("close", () => {
+  //         images.push(imageFileName);
+  //         if (--counter === 0 && finished) {
+  //           try {
+  //             data["images"] = images.concat(existingImages);
+  //             data["modifiedAt"] = new Date().getTime();
+  //             db.doc(`/accounts/${accountId}`).set(data, { merge: true });
+
+  //             console.log("images: ", imageData);
+
+  //             // imageData.map(imgData => {
+  //             //   bucket.upload(imgData.filepath, {
+  //             //     resumable: false,
+  //             //     destination: imgData.destination,
+  //             //     metadata: {
+  //             //       metadata: {
+  //             //         contentType: imgData.mimeType
+  //             //       }
+  //             //     }
+  //             //   });
+  //             // });
+
+  //             return res.json({
+  //               message: "Image uploaded successfully",
+  //               images
+  //             });
+  //           } catch (err) {
+  //             return res.json({ error: err.message });
+  //           }
+  //         }
+  //       });
+
+  //       file.pipe(fstream);
+  //     } else {
+  //       file.resume();
+  //     }
+  //   });
+
+  //   busboy.on("finish", () => {
+  //     finished = true;
+  //     if (fileCounter === 0) {
+  //       return res.status(400).json({ error: "No image file attached" });
+  //     }
+  //   });
+
+  //   busboy.end(req.rawBody);
+  // } catch (error) {
+  //   return res.send({ error: err.message });
+  // }
 };
 
 module.exports = {

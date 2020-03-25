@@ -8,7 +8,7 @@ const findAccounts = (req, res) => {
     .get()
     .then(snapshot => {
       if (snapshot.empty) {
-        return res.status(404).json({ error: "Not Found" });
+        return res.status(404).json({ error: "No document found" });
       }
       snapshot.forEach(doc => {
         data.push({ id: doc.id, ...doc.data() });

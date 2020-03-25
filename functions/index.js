@@ -15,6 +15,7 @@ const {
   findAccounts,
   addImage,
   removeImage,
+  updateGuestbook,
   validateFirebaseIdToken
 } = require("./middleware/");
 
@@ -28,11 +29,13 @@ app.get("/", (req, res) => {
       "please contact balla media (admin@ballamedia.com) for more information."
     );
 });
-app.get("/:id", findAccount);
+app.get("/a/:id", findAccount);
 
 app.post("/account", bodyParser.json(), createAccount);
 app.patch("/account/:aid", bodyParser.json(), updateAccount);
 app.get("/account", bodyParser.json(), findAccounts);
+
+app.patch("/guestbook/:aid", bodyParser.json(), updateGuestbook);
 
 app.post("/image/:aid", addImage);
 app.delete("/image", bodyParser.json(), removeImage);

@@ -4,6 +4,7 @@ const { findAccount } = require("./findAccount");
 const { findAccounts } = require("./findAccounts");
 const { addImage } = require("./addImage");
 const { removeImage } = require("./removeImage");
+const { updateGuestbook } = require("./updateGuestbook");
 const { validateFirebaseIdToken } = require("./validateFirebaseIdToken");
 
 module.exports = {
@@ -13,5 +14,6 @@ module.exports = {
   findAccounts,
   addImage,
   removeImage,
+  updateGuestbook,
   validateFirebaseIdToken
 };

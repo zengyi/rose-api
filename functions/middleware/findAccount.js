@@ -1,7 +1,7 @@
 const { db } = require("../admin");
 
 const findAccount = (req, res) => {
-  db.doc(`/accounts/${req.params.idd}`)
+  db.doc(`/accounts/${req.params.id}`)
     .get()
     .then(doc => {
       if (!doc.exists) {
